@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cat << EOF| kubectl create -f -
+cat << EOF| kubectl apply -f -
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
@@ -23,7 +23,9 @@ kubectl create clusterrolebinding descheduler-cluster-role-binding \
     --clusterrole=descheduler-cluster-role \
     --serviceaccount=kube-system:descheduler-sa
 
+kubectl delete configmap descheduler-policy-configmap -n kube-system
 kubectl create configmap descheduler-policy-configmap \
      -n kube-system --from-file=./examples/policy.yaml
 
-kubectl create -f job.yaml
+kubectl delete job descheduler-job -n kube-system
+kubectl apply -f job.yaml
