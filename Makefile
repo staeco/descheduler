@@ -15,28 +15,42 @@
 .PHONY: test
 
 # VERSION is currently based on the last commit
-VERSION=`git describe --tags`
+VERSION?=`git describe --tags`
 COMMIT=`git rev-parse HEAD`
 BUILD=`date +%FT%T%z`
-LDFLAG_LOCATION=github.com/kubernetes-incubator/descheduler/cmd/descheduler/app
+LDFLAG_LOCATION=sigs.k8s.io/descheduler/cmd/descheduler/app
 
 LDFLAGS=-ldflags "-X ${LDFLAG_LOCATION}.version=${VERSION} -X ${LDFLAG_LOCATION}.buildDate=${BUILD} -X ${LDFLAG_LOCATION}.gitCommit=${COMMIT}"
 
+GOLANGCI_VERSION := v1.15.0
+HAS_GOLANGCI := $(shell which golangci-lint)
+
+# REGISTRY is the container registry to push into.
+REGISTRY?=staging-k8s.gcr.io
 
 # IMAGE is the image name of descheduler
-# Should this be changed?
 IMAGE:=descheduler:$(VERSION)
+
+# IMAGE_GCLOUD is the image name of descheduler in the remote registry
+IMAGE_GCLOUD:=$(REGISTRY)/descheduler:$(VERSION)
 
 all: build
 
 build:
-	CGO_ENABLED=0 go build ${LDFLAGS} -o _output/bin/descheduler github.com/kubernetes-incubator/descheduler/cmd/descheduler
+	CGO_ENABLED=0 go build ${LDFLAGS} -o _output/bin/descheduler sigs.k8s.io/descheduler/cmd/descheduler
 
 dev-image: build
 	docker build -f Dockerfile.dev -t $(IMAGE) .
 
 image:
 	docker build -t $(IMAGE) .
+
+push-container-to-gcloud: image
+	gcloud auth configure-docker
+	docker tag $(IMAGE) $(IMAGE_GCLOUD)
+	docker push $(IMAGE_GCLOUD)
+
+push: push-container-to-gcloud
 
 clean:
 	rm -rf _output
@@ -52,3 +66,8 @@ gen:
 	./hack/update-generated-conversions.sh
 	./hack/update-generated-deep-copies.sh
 	./hack/update-generated-defaulters.sh
+lint:
+ifndef HAS_GOLANGCI
+	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(GOPATH)/bin ${GOLANGCI_VERSION}
+endif
+	golangci-lint run

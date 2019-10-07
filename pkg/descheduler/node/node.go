@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/kubernetes-incubator/descheduler/pkg/utils"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -28,6 +27,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"sigs.k8s.io/descheduler/pkg/utils"
 )
 
 // ReadyNodes returns ready nodes irrespective of whether they are
@@ -120,10 +120,7 @@ func IsReady(node *v1.Node) bool {
 // IsNodeUschedulable checks if the node is unschedulable. This is helper function to check only in case of
 // underutilized node so that they won't be accounted for.
 func IsNodeUschedulable(node *v1.Node) bool {
-	if node.Spec.Unschedulable {
-		return true
-	}
-	return false
+	return node.Spec.Unschedulable
 }
 
 // PodFitsAnyNode checks if the given pod fits any of the given nodes, based on

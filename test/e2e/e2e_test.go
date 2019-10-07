@@ -18,37 +18,39 @@ package e2e
 
 import (
 	"github.com/golang/glog"
+	"math"
 	"testing"
 	"time"
 
-	"github.com/kubernetes-incubator/descheduler/cmd/descheduler/app/options"
-	deschedulerapi "github.com/kubernetes-incubator/descheduler/pkg/api"
-	"github.com/kubernetes-incubator/descheduler/pkg/descheduler/client"
-	eutils "github.com/kubernetes-incubator/descheduler/pkg/descheduler/evictions/utils"
-	nodeutil "github.com/kubernetes-incubator/descheduler/pkg/descheduler/node"
-	podutil "github.com/kubernetes-incubator/descheduler/pkg/descheduler/pod"
-	"github.com/kubernetes-incubator/descheduler/pkg/descheduler/strategies"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/api/testapi"
+	"sigs.k8s.io/descheduler/cmd/descheduler/app/options"
+	deschedulerapi "sigs.k8s.io/descheduler/pkg/api"
+	"sigs.k8s.io/descheduler/pkg/descheduler/client"
+	eutils "sigs.k8s.io/descheduler/pkg/descheduler/evictions/utils"
+	nodeutil "sigs.k8s.io/descheduler/pkg/descheduler/node"
+	podutil "sigs.k8s.io/descheduler/pkg/descheduler/pod"
+	"sigs.k8s.io/descheduler/pkg/descheduler/strategies"
 )
 
 func MakePodSpec() v1.PodSpec {
 	return v1.PodSpec{
 		Containers: []v1.Container{{
-			Name:  "pause",
-			Image: "kubernetes/pause",
-			Ports: []v1.ContainerPort{{ContainerPort: 80}},
+			Name:            "pause",
+			ImagePullPolicy: "Never",
+			Image:           "kubernetes/pause",
+			Ports:           []v1.ContainerPort{{ContainerPort: 80}},
 			Resources: v1.ResourceRequirements{
 				Limits: v1.ResourceList{
 					v1.ResourceCPU:    resource.MustParse("100m"),
-					v1.ResourceMemory: resource.MustParse("500Mi"),
+					v1.ResourceMemory: resource.MustParse("1000Mi"),
 				},
 				Requests: v1.ResourceList{
 					v1.ResourceCPU:    resource.MustParse("100m"),
-					v1.ResourceMemory: resource.MustParse("500Mi"),
+					v1.ResourceMemory: resource.MustParse("800Mi"),
 				},
 			},
 		}},
@@ -115,13 +117,12 @@ func startEndToEndForLowNodeUtilization(clientset clientset.Interface) {
 	nodePodCount := strategies.InitializeNodePodCount(nodes)
 	strategies.LowNodeUtilization(ds, lowNodeUtilizationStrategy, evictionPolicyGroupVersion, nodes, nodePodCount)
 	time.Sleep(10 * time.Second)
-
-	return
 }
 
 func TestE2E(t *testing.T) {
 	// If we have reached here, it means cluster would have been already setup and the kubeconfig file should
-	// be in /tmp directory.
+	// be in /tmp directory as admin.conf.
+	var leastLoadedNode v1.Node
 	clientSet, err := client.CreateClient("/tmp/admin.conf")
 	if err != nil {
 		t.Errorf("Error during client creation with %v", err)
@@ -132,20 +133,31 @@ func TestE2E(t *testing.T) {
 	}
 	// Assumption: We would have 3 node cluster by now. Kubeadm brings all the master components onto master node.
 	// So, the last node would have least utilization.
-	leastLoadedNode := nodeList.Items[2]
 	rc := RcByNameContainer("test-rc", int32(15), map[string]string{"test": "app"}, nil)
 	_, err = clientSet.CoreV1().ReplicationControllers("default").Create(rc)
 	if err != nil {
 		t.Errorf("Error creating deployment %v", err)
 	}
-	podsOnleastUtilizedNode, err := podutil.ListPodsOnANode(clientSet, &leastLoadedNode)
-	if err != nil {
-		t.Errorf("Error listing pods on a node %v", err)
+	podsBefore := math.MaxInt16
+	for i := range nodeList.Items {
+		// Skip the Master Node
+		if _, exist := nodeList.Items[i].Labels["node-role.kubernetes.io/master"]; exist {
+			continue
+		}
+		// List all the pods on the current Node
+		podsOnANode, err := podutil.ListEvictablePodsOnNode(clientSet, &nodeList.Items[i], true)
+		if err != nil {
+			t.Errorf("Error listing pods on a node %v", err)
+		}
+		// Update leastLoadedNode if necessary
+		if tmpLoads := len(podsOnANode); tmpLoads < podsBefore {
+			leastLoadedNode = nodeList.Items[i]
+			podsBefore = tmpLoads
+		}
 	}
-	podsBefore := len(podsOnleastUtilizedNode)
 	t.Log("Eviction of pods starting")
 	startEndToEndForLowNodeUtilization(clientSet)
-	podsOnleastUtilizedNode, err = podutil.ListPodsOnANode(clientSet, &leastLoadedNode)
+	podsOnleastUtilizedNode, err := podutil.ListEvictablePodsOnNode(clientSet, &leastLoadedNode, true)
 	if err != nil {
 		t.Errorf("Error listing pods on a node %v", err)
 	}

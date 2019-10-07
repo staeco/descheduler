@@ -21,14 +21,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kubernetes-incubator/descheduler/pkg/api"
-	"github.com/kubernetes-incubator/descheduler/test"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 	"reflect"
+	"sigs.k8s.io/descheduler/pkg/api"
+	"sigs.k8s.io/descheduler/test"
 )
 
 // TODO: Make this table driven.
@@ -112,7 +112,7 @@ func TestLowNodeUtilizationWithoutPriority(t *testing.T) {
 	})
 	expectedPodsEvicted := 3
 	npm := createNodePodsMap(fakeClient, []*v1.Node{n1, n2, n3})
-	lowNodes, targetNodes := classifyNodes(npm, thresholds, targetThresholds)
+	lowNodes, targetNodes := classifyNodes(npm, thresholds, targetThresholds, false)
 	if len(lowNodes) != 1 {
 		t.Errorf("After ignoring unschedulable nodes, expected only one node to be under utilized.")
 	}
@@ -217,7 +217,7 @@ func TestLowNodeUtilizationWithPriorities(t *testing.T) {
 	})
 	expectedPodsEvicted := 3
 	npm := createNodePodsMap(fakeClient, []*v1.Node{n1, n2, n3})
-	lowNodes, targetNodes := classifyNodes(npm, thresholds, targetThresholds)
+	lowNodes, targetNodes := classifyNodes(npm, thresholds, targetThresholds, false)
 	if len(lowNodes) != 1 {
 		t.Errorf("After ignoring unschedulable nodes, expected only one node to be under utilized.")
 	}

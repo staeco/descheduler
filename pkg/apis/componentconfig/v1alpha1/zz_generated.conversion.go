@@ -23,9 +23,9 @@ package v1alpha1
 import (
 	time "time"
 
-	componentconfig "github.com/kubernetes-incubator/descheduler/pkg/apis/componentconfig"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	componentconfig "sigs.k8s.io/descheduler/pkg/apis/componentconfig"
 )
 
 func init() {
@@ -48,6 +48,7 @@ func autoConvert_v1alpha1_DeschedulerConfiguration_To_componentconfig_Deschedule
 	out.DryRun = in.DryRun
 	out.NodeSelector = in.NodeSelector
 	out.MaxNoOfPodsToEvictPerNode = in.MaxNoOfPodsToEvictPerNode
+	out.EvictLocalStoragePods = in.EvictLocalStoragePods
 	return nil
 }
 
@@ -63,6 +64,7 @@ func autoConvert_componentconfig_DeschedulerConfiguration_To_v1alpha1_Deschedule
 	out.DryRun = in.DryRun
 	out.NodeSelector = in.NodeSelector
 	out.MaxNoOfPodsToEvictPerNode = in.MaxNoOfPodsToEvictPerNode
+	out.EvictLocalStoragePods = in.EvictLocalStoragePods
 	return nil
 }
 

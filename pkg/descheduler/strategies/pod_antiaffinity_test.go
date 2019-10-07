@@ -19,12 +19,12 @@ package strategies
 import (
 	"testing"
 
-	"github.com/kubernetes-incubator/descheduler/test"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
+	"sigs.k8s.io/descheduler/test"
 )
 
 func TestPodAntiAffinity(t *testing.T) {
@@ -55,13 +55,13 @@ func TestPodAntiAffinity(t *testing.T) {
 	npe := nodePodEvictedCount{}
 	npe[node] = 0
 	expectedEvictedPodCount := 3
-	podsEvicted := removePodsWithAffinityRules(fakeClient, "v1", []*v1.Node{node}, false, npe, 0)
+	podsEvicted := removePodsWithAffinityRules(fakeClient, "v1", []*v1.Node{node}, false, npe, 0, false)
 	if podsEvicted != expectedEvictedPodCount {
 		t.Errorf("Unexpected no of pods evicted: pods evicted: %d, expected: %d", podsEvicted, expectedEvictedPodCount)
 	}
 	npe[node] = 0
 	expectedEvictedPodCount = 1
-	podsEvicted = removePodsWithAffinityRules(fakeClient, "v1", []*v1.Node{node}, false, npe, 1)
+	podsEvicted = removePodsWithAffinityRules(fakeClient, "v1", []*v1.Node{node}, false, npe, 1, false)
 	if podsEvicted != expectedEvictedPodCount {
 		t.Errorf("Unexpected no of pods evicted: pods evicted: %d, expected: %d", podsEvicted, expectedEvictedPodCount)
 	}

@@ -17,10 +17,10 @@ limitations under the License.
 package strategies
 
 import (
-	"github.com/kubernetes-incubator/descheduler/cmd/descheduler/app/options"
-	"github.com/kubernetes-incubator/descheduler/pkg/api"
-	"github.com/kubernetes-incubator/descheduler/pkg/descheduler/evictions"
-	podutil "github.com/kubernetes-incubator/descheduler/pkg/descheduler/pod"
+	"sigs.k8s.io/descheduler/cmd/descheduler/app/options"
+	"sigs.k8s.io/descheduler/pkg/api"
+	"sigs.k8s.io/descheduler/pkg/descheduler/evictions"
+	podutil "sigs.k8s.io/descheduler/pkg/descheduler/pod"
 
 	"github.com/golang/glog"
 
@@ -35,15 +35,15 @@ func RemovePodsViolatingInterPodAntiAffinity(ds *options.DeschedulerServer, stra
 	if !strategy.Enabled {
 		return
 	}
-	removePodsWithAffinityRules(ds.Client, policyGroupVersion, nodes, ds.DryRun, nodePodCount, ds.MaxNoOfPodsToEvictPerNode)
+	removePodsWithAffinityRules(ds.Client, policyGroupVersion, nodes, ds.DryRun, nodePodCount, ds.MaxNoOfPodsToEvictPerNode, ds.EvictLocalStoragePods)
 }
 
 // removePodsWithAffinityRules evicts pods on the node which are having a pod affinity rules.
-func removePodsWithAffinityRules(client clientset.Interface, policyGroupVersion string, nodes []*v1.Node, dryRun bool, nodePodCount nodePodEvictedCount, maxPodsToEvict int) int {
+func removePodsWithAffinityRules(client clientset.Interface, policyGroupVersion string, nodes []*v1.Node, dryRun bool, nodePodCount nodePodEvictedCount, maxPodsToEvict int, evictLocalStoragePods bool) int {
 	podsEvicted := 0
 	for _, node := range nodes {
 		glog.V(1).Infof("Processing node: %#v\n", node.Name)
-		pods, err := podutil.ListEvictablePodsOnNode(client, node)
+		pods, err := podutil.ListEvictablePodsOnNode(client, node, evictLocalStoragePods)
 		if err != nil {
 			return 0
 		}

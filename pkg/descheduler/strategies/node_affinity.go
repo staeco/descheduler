@@ -18,19 +18,19 @@ package strategies
 
 import (
 	"github.com/golang/glog"
-	"github.com/kubernetes-incubator/descheduler/cmd/descheduler/app/options"
-	"github.com/kubernetes-incubator/descheduler/pkg/api"
-	"github.com/kubernetes-incubator/descheduler/pkg/descheduler/evictions"
-	nodeutil "github.com/kubernetes-incubator/descheduler/pkg/descheduler/node"
-	podutil "github.com/kubernetes-incubator/descheduler/pkg/descheduler/pod"
 	"k8s.io/api/core/v1"
+	"sigs.k8s.io/descheduler/cmd/descheduler/app/options"
+	"sigs.k8s.io/descheduler/pkg/api"
+	"sigs.k8s.io/descheduler/pkg/descheduler/evictions"
+	nodeutil "sigs.k8s.io/descheduler/pkg/descheduler/node"
+	podutil "sigs.k8s.io/descheduler/pkg/descheduler/pod"
 )
 
 func RemovePodsViolatingNodeAffinity(ds *options.DeschedulerServer, strategy api.DeschedulerStrategy, evictionPolicyGroupVersion string, nodes []*v1.Node, nodePodCount nodePodEvictedCount) {
-	removePodsViolatingNodeAffinityCount(ds, strategy, evictionPolicyGroupVersion, nodes, nodePodCount, ds.MaxNoOfPodsToEvictPerNode)
+	removePodsViolatingNodeAffinityCount(ds, strategy, evictionPolicyGroupVersion, nodes, nodePodCount, ds.MaxNoOfPodsToEvictPerNode, ds.EvictLocalStoragePods)
 }
 
-func removePodsViolatingNodeAffinityCount(ds *options.DeschedulerServer, strategy api.DeschedulerStrategy, evictionPolicyGroupVersion string, nodes []*v1.Node, nodepodCount nodePodEvictedCount, maxPodsToEvict int) int {
+func removePodsViolatingNodeAffinityCount(ds *options.DeschedulerServer, strategy api.DeschedulerStrategy, evictionPolicyGroupVersion string, nodes []*v1.Node, nodepodCount nodePodEvictedCount, maxPodsToEvict int, evictLocalStoragePods bool) int {
 	evictedPodCount := 0
 	if !strategy.Enabled {
 		return evictedPodCount
@@ -44,7 +44,7 @@ func removePodsViolatingNodeAffinityCount(ds *options.DeschedulerServer, strateg
 			for _, node := range nodes {
 				glog.V(1).Infof("Processing node: %#v\n", node.Name)
 
-				pods, err := podutil.ListEvictablePodsOnNode(ds.Client, node)
+				pods, err := podutil.ListEvictablePodsOnNode(ds.Client, node, evictLocalStoragePods)
 				if err != nil {
 					glog.Errorf("failed to get pods from %v: %v", node.Name, err)
 				}
