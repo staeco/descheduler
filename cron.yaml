@@ -4,7 +4,7 @@ metadata:
   name: descheduler-job
   namespace: kube-system
 spec:
-  schedule: "*/15 * * * *"
+  schedule: "0 1 * * *"
   concurrencyPolicy: Forbid
   jobTemplate:
     metadata:
@@ -16,7 +16,7 @@ spec:
         spec:
           containers:
           - name: descheduler
-            image: gcr.io/stae-product/descheduler:v0.8.0-2-g19ee5d80
+            image: gcr.io/stae-product/descheduler:v0.8.0-37-g0866e248
             volumeMounts:
             - mountPath: /policy-dir
               name: policy-volume

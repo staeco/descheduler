@@ -28,4 +28,4 @@ kubectl create configmap descheduler-policy-configmap \
      -n kube-system --from-file=./examples/policy.yaml
 
 kubectl delete job descheduler-job -n kube-system
-kubectl apply -f job.yaml
+kubectl apply -f cron.yaml
